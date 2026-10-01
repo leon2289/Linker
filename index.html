@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>在线自动点击器</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: radial-gradient(circle at 30% 20%, #0f2027, #000);
+    color: #d6ffe9;
+    font-family: -apple-system, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    display: flex; justify-content: center; align-items: flex-start;
+    padding: 30px 16px;
+  }
+  .card {
+    width: 100%; max-width: 640px;
+    background: rgba(10, 30, 22, 0.78);
+    border: 1px solid rgba(0, 255, 136, 0.25);
+    border-radius: 18px;
+    padding: 28px;
+    box-shadow: 0 0 40px rgba(0, 255, 136, 0.18);
+  }
+  h1 { font-size: 22px; color: #00ff88; margin-bottom: 6px; letter-spacing: 1px; }
+  .sub { color: #6fb495; font-size: 13px; margin-bottom: 22px; }
+
+  .stage {
+    position: relative;
+    height: 260px;
+    background: #001b14;
+    border: 1px dashed rgba(0, 255, 136, 0.35);
+    border-radius: 14px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    cursor: crosshair;
+    user-select: none;
+  }
+  #target {
+    position: absolute;
+    width: 90px; height: 90px;
+    background: radial-gradient(circle, #00ff88, #00a85a);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: #002014;
+    box-shadow: 0 0 30px rgba(0, 255, 136, 0.6);
+    transform: translate(-50%, -50%);
+    left: 50%; top: 50%;
+    pointer-events: none;
+    transition: transform .08s;
+  }
+  #target.active { transform: translate(-50%, -50%) scale(.9); }
+
+  .marker {
+    position: absolute;
+    width: 28px; height: 28px;
+    border: 2px solid #4ad7ff;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    animation: pulse .6s ease-out;
+  }
+  @keyframes pulse {
+    from { opacity: 1; transform: translate(-50%, -50%) scale(.4); }
+    to   { opacity: 0; transform: translate(-50%, -50%) scale(1.8); }
+  }
+
+  .row3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  label { display: block; font-size: 12px; color: #8fd8b5; margin-bottom: 6px; }
+  input[type=number] {
+    width: 100%; padding: 10px 12px; font-size: 14px;
+    background: #001510; color: #00ff88;
+    border: 1px solid rgba(0, 255, 136, 0.25);
+    border-radius: 9px;
+    outline: none;
+    font-family: Menlo, Consolas, monospace;
+  }
+  input[type=number]:focus {
+    border-color: #00ff88;
+    box-shadow: 0 0 8px rgba(0, 255, 136, 0.5);
+  }
+
+  button {
+    cursor: pointer; border: none; border-radius: 10px;
+    padding: 13px 20px; font-size: 15px; font-weight: 600;
+    transition: .2s;
+    font-family: inherit;
+  }
+  .btn-start {
+    width: 100%; margin-top: 16px;
+    background: #00ff88; color: #002014;
+  }
+  .btn-start:hover { background: #00ffaa; box-shadow: 0 0 18px rgba(0, 255, 136, 0.6); }
+  .btn-stop {
+    width: 100%; margin-top: 10px;
+    background: rgba(255, 45, 85, 0.4); color: #ff8fa3;
+    border: 1px solid rgba(255, 45, 85, 0.5);
+  }
+  .btn-stop:hover { background: rgba(255, 45, 85, 0.6); }
+  button:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+
+  .status {
+    margin-top: 20px;
+    padding: 14px 16px;
+    background: #001b14;
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    border-radius: 12px;
+    font-family: Menlo, Consolas, monospace;
+    font-size: 13px;
+  }
+  .status .line {
+    display: flex; justify-content: space-between;
+    margin: 5px 0;
+  }
+  .status .line span:first-child { color: #6fb495; }
+  .status .big { color: #00ff88; font-weight: 700; font-size: 15px; }
+  .progress {
+    height: 8px; border-radius: 4px; margin-top: 10px;
+    background: #00251c; overflow: hidden;
+  }
+  .progress > div {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #00ff88, #4ad7ff);
+    transition: width .15s linear;
+  }
+
+  .tip {
+    margin-top: 14px;
+    font-size: 12px;
+    color: #6fb495;
+    line-height: 1.7;
+  }
+  .tip b { color: #00ff88; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>🖱️ 在线自动点击器</h1>
+  <div class="sub">纯网页版 · 打开即用 · 无需安装</div>
+
+  <div class="stage" id="stage">
+    <div id="target">点这里</div>
+  </div>
+
+  <p class="tip">💡 点击上方灰框区域，选择你要反复点击的位置。</p>
+
+  <div class="row3" style="margin-top: 16px;">
+    <div>
+      <label>总时长（秒）</label>
+      <input type="number" id="duration" value="10" min="0.1" step="0.1">
+    </div>
+    <div>
+      <label>点击间隔（秒）</label>
+      <input type="number" id="interval" value="0.2" min="0.01" step="0.01">
+    </div>
+    <div>
+      <label>延迟开始（秒）</label>
+      <input type="number" id="delay" value="3" min="0" step="1">
+    </div>
+  </div>
+
+  <button class="btn-start" id="btnStart">▶ 开始点击</button>
+  <button class="btn-stop" id="btnStop" disabled>■ 停止</button>
+
+  <div class="status">
+    <div class="line"><span>状态</span><span class="big" id="msg">就绪</span></div>
+    <div class="line"><span>已点击</span><span id="clicked">0</span></div>
+    <div class="line"><span>剩余时间</span><span id="remain">0.0 s</span></div>
+    <div class="progress"><div id="bar"></div></div>
+  </div>
+
+  <p class="tip">
+    ⚠️ 受浏览器安全限制，本工具<b>只能点击网页内部区域</b>，
+    无法控制桌面其他软件。如需控制真实鼠标，请使用本地 Python 版本。
+  </p>
+</div>
+
+<script>
+(function() {
+  const stage = document.getElementById('stage');
+  const target = document.getElementById('target');
+  const msg = document.getElementById('msg');
+  const clickedEl = document.getElementById('clicked');
+  const remainEl = document.getElementById('remain');
+  const bar = document.getElementById('bar');
+  const btnStart = document.getElementById('btnStart');
+  const btnStop = document.getElementById('btnStop');
+
+  let pos = null;
+  let running = false;
+  let timer = null;
+  let startTime = 0;
+  let duration = 0;
+  let clicked = 0;
+
+  // 点击 stage 选择位置
+  stage.addEventListener('click', function(e) {
+    if (running) return;
+    const rect = stage.getBoundingClientRect();
+    pos = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+    target.style.left = pos.x + 'px';
+    target.style.top = pos.y + 'px';
+    msg.textContent = '已选位置 (' + Math.round(pos.x) + ', ' + Math.round(pos.y) + ')';
+  });
+
+  // 显示点击波纹
+  function showClick(x, y) {
+    const m = document.createElement('div');
+    m.className = 'marker';
+    m.style.left = x + 'px';
+    m.style.top = y + 'px';
+    stage.appendChild(m);
+    setTimeout(function() { m.remove(); }, 600);
+  }
+
+  // 开始
+  btnStart.addEventListener('click', async function() {
+    if (!pos) {
+      alert('请先点击灰色区域选择要点击的位置！');
+      return;
+    }
+    if (running) return;
+
+    duration = parseFloat(document.getElementById('duration').value) || 10;
+    const interval = parseFloat(document.getElementById('interval').value) || 0.2;
+    let delay = parseInt(document.getElementById('delay').value) || 0;
+
+    // 延迟倒计时
+    while (delay > 0) {
+      msg.textContent = delay + ' 秒后开始…';
+      await new Promise(function(r) { setTimeout(r, 1000); });
+      delay--;
+    }
+
+    running = true;
+    clicked = 0;
+    clickedEl.textContent = '0';
+    startTime = Date.now();
+    btnStart.disabled = true;
+    btnStop.disabled = false;
+    msg.textContent = '点击中…';
+
+    const durationMs = duration * 1000;
+    const intervalMs = interval * 1000;
+
+    timer = setInterval(function() {
+      const elapsed = Date.now() - startTime;
+      const remain = Math.max(0, (durationMs - elapsed) / 1000);
+
+      // 视觉反馈
+      target.classList.add('active');
+      setTimeout(function() { target.classList.remove('active'); }, 80);
+      showClick(pos.x, pos.y);
+
+      clicked++;
+      clickedEl.textContent = clicked;
+      remainEl.textContent = remain.toFixed(1) + ' s';
+      bar.style.width = ((1 - remain / duration) * 100) + '%';
+
+      if (remain <= 0) {
+        stopAll('完成');
+      }
+    }, intervalMs);
+  });
+
+  // 停止
+  function stopAll(reason) {
+    running = false;
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+    btnStart.disabled = false;
+    btnStop.disabled = true;
+    msg.textContent = reason + '（共 ' + clicked + ' 次）';
+  }
+
+  btnStop.addEventListener('click', function() {
+    stopAll('手动停止');
+  });
+})();
+</script>
+
+</body>
+</html>
